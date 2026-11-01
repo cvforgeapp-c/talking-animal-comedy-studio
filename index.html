@@ -39,19 +39,19 @@
         </div>
 
         <!-- Prompt Card Section -->
-        <div id="form-card" class="glass-box glow-prompt rounded-2xl p-4 space-y-3 relative">
-            <div class="text-xs text-zinc-400 font-medium">Prompt:</div>
+        <div class="glass-box glow-prompt rounded-2xl p-4 space-y-3 relative" id="form-container">
+            <div class="text-xs text-zinc-400 font-medium">Prompt / Comedy Premise:</div>
             
             <textarea id="prompt-input" rows="4" maxlength="1000" oninput="updateCharCount()" 
                 class="w-full bg-transparent text-sm text-white placeholder-zinc-500 focus:outline-none resize-none"
-                placeholder="A comedy sketch between a sarcastic goat and a wise monkey discussing why alarm clocks eat grass."></textarea>
+                placeholder="A hilarious conversation between a monkey and a goat arguing about a late alarm clock..."></textarea>
 
             <div class="flex items-center justify-between pt-1">
                 <button onclick="surpriseMe()" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition border border-white/5">
                     <span>💡</span> Surprise me
                 </button>
                 <div class="text-[11px] text-zinc-500 font-mono">
-                    <span id="char-count">97</span>/1000 
+                    <span id="char-count">108</span>/1000 
                     <button onclick="clearPrompt()" class="ml-2 text-zinc-400 hover:text-white font-bold">✕</button>
                 </div>
             </div>
@@ -90,18 +90,18 @@
 
         <!-- Main Generation Action Button -->
         <button id="generate-btn" onclick="startGeneration()" class="w-full btn-gradient text-white font-extrabold py-4 rounded-2xl shadow-xl shadow-purple-900/30 active:scale-98 transition flex items-center justify-center gap-2 text-base">
-            <span>✨</span> <span id="btn-text">Generate</span>
+            <span>✨</span> <span id="btn-text">Generate Comedy Video</span>
         </button>
 
-        <!-- Generation Progress Overlay (Incorporated New Layout) -->
-        <div id="status-card" class="hidden glass-box rounded-2xl p-6 text-center space-y-3">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-3 border-amber-400 border-t-transparent mx-auto"></div>
+        <!-- Generation Progress Overlay -->
+        <div id="status-container" class="hidden glass-box rounded-2xl p-6 text-center space-y-4">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-3 border-amber-400 border-t-transparent"></div>
             <p id="status-text" class="text-xs font-bold text-amber-400">Interpreting prompt with Gemini AI...</p>
-            <div id="script-preview" class="text-left text-xs bg-black/60 p-3 rounded-xl border border-white/5 space-y-1 font-mono mt-2"></div>
+            <div id="script-preview" class="text-left text-xs bg-black/60 p-3 rounded-xl border border-white/5 space-y-2 font-mono"></div>
         </div>
 
         <!-- Result Container -->
-        <div id="video-container" class="hidden glass-box rounded-2xl p-4 space-y-4">
+        <div id="video-container" class="hidden glass-box rounded-2xl p-6 space-y-4">
             <h3 class="text-emerald-400 font-bold text-sm">Video Ready! 🎉</h3>
             <video id="result-video" controls class="w-full rounded-xl border border-white/10 aspect-video object-cover"></video>
             <button onclick="resetForm()" class="w-full bg-zinc-800 hover:bg-zinc-700 py-3 rounded-xl text-xs font-bold text-zinc-300 transition">
@@ -162,12 +162,12 @@
 
     <script>
         let pollInterval = null;
-        let latestScriptData = null; // Cache to enforce strict compliance with script
+        let latestScriptData = null;
         
         const surprisePrompts = [
-            "A comedy sketch between a sarcastic goat and a wise monkey discussing why alarm clocks eat grass.",
-            "An epic battle between a cybernetic tiger and a rogue penguin DJ in Neon City.",
-            "Two jungle pandas debating the physics of rolling down muddy hills."
+            "A hilarious conversation between a sarcastic mountain goat and a wise monkey arguing about a late alarm clock.",
+            "Why did the chicken cross the cyber road? An AI animal stand-up comedy sequence.",
+            "Two jungle animals discovering a smartphone and trying to record a viral TikTok dance."
         ];
 
         function updateCharCount() {
@@ -208,17 +208,16 @@
             event.currentTarget.classList.add('border-amber-500', 'text-amber-400');
         }
 
-        /* Updated Generation Handler Function with Strict Script Payload */
         async function startGeneration() {
             const promptText = document.getElementById('prompt-input').value;
             if(!promptText.trim()) {
-                alert("Please enter a prompt first!");
+                alert("Please enter a prompt or comedy topic first!");
                 return;
             }
 
-            document.getElementById('form-card').classList.add('hidden');
-            document.getElementById('status-card').classList.remove('hidden');
-            document.getElementById('btn-text').innerText = "Generating...";
+            document.getElementById('form-container').classList.add('hidden');
+            document.getElementById('status-container').classList.remove('hidden');
+            document.getElementById('status-text').innerText = "Interpreting prompt with Gemini AI...";
 
             try {
                 const response = await fetch('/api/generate', {
@@ -234,7 +233,7 @@
 
                 if (data.success) {
                     if (data.script) {
-                        latestScriptData = data.script; // Cache script for subsequent rendering
+                        latestScriptData = data.script;
                         let html = `<p class="text-zinc-400 font-bold mb-1">Strict Script Locked:</p>`;
                         data.script.forEach(line => {
                             html += `<p><strong class="text-amber-400">${line.character}:</strong> ${line.text}</p>`;
@@ -242,7 +241,7 @@
                         document.getElementById('script-preview').innerHTML = html;
                     }
 
-                    document.getElementById('status-text').innerText = "Synthesizing exact character voices & rendering video...";
+                    document.getElementById('status-text').innerText = "Job queued! Processing voice & animation sync...";
                     pollInterval = setInterval(() => checkJobStatus(data.job_id), 3000);
                 } else {
                     alert("Error: " + data.error);
@@ -256,18 +255,21 @@
 
         async function checkJobStatus(jobId) {
             try {
-                const res = await fetch(`/api/job-status?job_id=${jobId}`);
+                const res = await fetch(`/api/job-status?job_id=` + jobId);
                 const data = await res.json();
 
                 if (data.success) {
                     if (data.status === 'completed') {
                         clearInterval(pollInterval);
-                        document.getElementById('status-card').classList.add('hidden');
+                        document.getElementById('status-container').classList.add('hidden');
                         document.getElementById('video-container').classList.remove('hidden');
                         if (data.video_url) {
                             document.getElementById('result-video').src = data.video_url;
                         }
-                        document.getElementById('btn-text').innerText = "Generate";
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        alert("Video generation failed on server.");
+                        resetForm();
                     }
                 }
             } catch (err) {
@@ -277,13 +279,12 @@
 
         function resetForm() {
             clearInterval(pollInterval);
-            latestScriptData = null; // Clear script cache on reset
+            latestScriptData = null;
             document.getElementById('video-container').classList.add('hidden');
-            document.getElementById('status-card').classList.add('hidden');
-            document.getElementById('form-card').classList.remove('hidden');
+            document.getElementById('status-container').classList.add('hidden');
+            document.getElementById('form-container').classList.remove('hidden');
             document.getElementById('script-preview').innerHTML = '';
             document.getElementById('status-text').innerText = "Interpreting prompt with Gemini AI...";
-            document.getElementById('btn-text').innerText = "Generate";
         }
     </script>
 </body>

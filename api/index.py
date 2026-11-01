@@ -10,6 +10,11 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 LUMA_API_KEY = os.getenv("LUMA_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
+print(f"--- CONFIG STATUS ---")
+print(f"Gemini API Key Loaded: {bool(GEMINI_API_KEY)}")
+print(f"Luma API Key Loaded: {bool(LUMA_API_KEY)}")
+print(f"Database URL Loaded: {bool(DATABASE_URL)}")
+
 # Configure Gemini if key is provided
 if GEMINI_API_KEY:
     try:
@@ -24,6 +29,7 @@ if LUMA_API_KEY:
     try:
         from lumaai import LumaAI
         luma_client = LumaAI(auth_token=LUMA_API_KEY)
+        print("Luma AI client successfully initialized.")
     except Exception as e:
         print(f"Luma AI SDK initialization error: {e}")
 
@@ -51,12 +57,10 @@ def get_db_connection():
         print(f"Database connection error: {e}")
         return None
 
-# Rotating dynamic sample video fallback links when Luma key isn't provided
-SAMPLE_VIDEOS = [
+# Fallback links only used if external generation completely errors out
+FALLBACK_VIDEOS = [
     "https://www.w3schools.com/html/mov_bbb.mp4",
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
 ]
 
 @app.route("/", methods=["GET"])
@@ -75,7 +79,7 @@ def generate_comedy():
         script_lines = []
         external_task_id = None
 
-        # Strict compliance locking mechanism for script generation
+        # 1. Strict compliance locking mechanism for script generation
         if strict_mode and incoming_script:
             script_lines = incoming_script
         else:
@@ -108,12 +112,13 @@ def generate_comedy():
                     {"character": "Guest", "text": "Production studio running standard mode."}
                 ]
 
-        # Trigger real Luma AI generation if configured, otherwise use dynamic sample fallback
+        # 2. Trigger real Luma AI generation if key exists
         initial_status = "processing"
-        video_url = None
+        video_url = ""
 
         if luma_client:
             try:
+                print(f"Triggering Luma AI generation for prompt: {prompt}")
                 generation = luma_client.create(
                     prompt=prompt,
                     model="ray-2",
@@ -121,15 +126,17 @@ def generate_comedy():
                     duration="5s"
                 )
                 external_task_id = generation.id
+                print(f"Luma task created successfully with ID: {external_task_id}")
             except Exception as luma_err:
-                print(f"Luma API trigger error: {luma_err}")
+                print(f"Luma API generation error: {luma_err}")
                 initial_status = "completed"
-                video_url = SAMPLE_VIDEOS[abs(hash(prompt)) % len(SAMPLE_VIDEOS)]
+                video_url = FALLBACK_VIDEOS[0]
         else:
+            print("Warning: LUMA_API_KEY is not set. Falling back to dynamic mock video.")
             initial_status = "completed"
-            video_url = SAMPLE_VIDEOS[abs(hash(prompt)) % len(SAMPLE_VIDEOS)]
+            video_url = FALLBACK_VIDEOS[abs(hash(prompt)) % len(FALLBACK_VIDEOS)]
 
-        # Save to database if connected
+        # 3. Save job state to database
         conn = get_db_connection()
         if conn:
             try:
@@ -151,10 +158,11 @@ def generate_comedy():
             "job_id": job_id,
             "status": initial_status,
             "script": script_lines,
-            "video_url": video_url if video_url else "",
+            "video_url": video_url,
             "message": "Prompt successfully parsed and video generation queued!"
         })
     except Exception as e:
+        print(f"Error in generate_comedy: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/job-status", methods=["GET"])
@@ -170,7 +178,7 @@ def job_status():
                 "success": True,
                 "job_id": job_id,
                 "status": "completed",
-                "video_url": SAMPLE_VIDEOS[0]
+                "video_url": FALLBACK_VIDEOS[0]
             })
             
         cur = conn.cursor()
@@ -188,6 +196,7 @@ def job_status():
         if luma_client and external_task_id and status == "processing":
             try:
                 gen_status = luma_client.get(id=external_task_id)
+                print(f"Polling Luma Task {external_task_id}: State -> {gen_status.state}")
                 if gen_status.state == "completed":
                     status = "completed"
                     video_url = gen_status.assets.video if gen_status.assets and gen_status.assets.video else ""

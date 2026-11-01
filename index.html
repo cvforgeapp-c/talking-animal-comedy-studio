@@ -162,6 +162,8 @@
 
     <script>
         let pollInterval = null;
+        let latestScriptData = null; // Cache to enforce strict compliance with script
+        
         const surprisePrompts = [
             "A comedy sketch between a sarcastic goat and a wise monkey discussing why alarm clocks eat grass.",
             "An epic battle between a cybernetic tiger and a rogue penguin DJ in Neon City.",
@@ -206,7 +208,7 @@
             event.currentTarget.classList.add('border-amber-500', 'text-amber-400');
         }
 
-        /* Updated Generation Handler Function */
+        /* Updated Generation Handler Function with Strict Script Payload */
         async function startGeneration() {
             const promptText = document.getElementById('prompt-input').value;
             if(!promptText.trim()) {
@@ -222,20 +224,25 @@
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: promptText })
+                    body: JSON.stringify({ 
+                        prompt: promptText,
+                        script: latestScriptData,
+                        strict_mode: true
+                    })
                 });
                 const data = await response.json();
 
                 if (data.success) {
                     if (data.script) {
-                        let html = `<p class="text-zinc-400 font-bold mb-1">Generated Script:</p>`;
+                        latestScriptData = data.script; // Cache script for subsequent rendering
+                        let html = `<p class="text-zinc-400 font-bold mb-1">Strict Script Locked:</p>`;
                         data.script.forEach(line => {
                             html += `<p><strong class="text-amber-400">${line.character}:</strong> ${line.text}</p>`;
                         });
                         document.getElementById('script-preview').innerHTML = html;
                     }
 
-                    document.getElementById('status-text').innerText = "Synthesizing voice & rendering video...";
+                    document.getElementById('status-text').innerText = "Synthesizing exact character voices & rendering video...";
                     pollInterval = setInterval(() => checkJobStatus(data.job_id), 3000);
                 } else {
                     alert("Error: " + data.error);
@@ -270,6 +277,7 @@
 
         function resetForm() {
             clearInterval(pollInterval);
+            latestScriptData = null; // Clear script cache on reset
             document.getElementById('video-container').classList.add('hidden');
             document.getElementById('status-card').classList.add('hidden');
             document.getElementById('form-card').classList.remove('hidden');

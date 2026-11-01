@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Load environment variables
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+ELEVENLABS_API_KEY = os.getenv("sk_25b4c225c9483dcf9830addf98704b082080bbda20df1c60", "")
 HEDRA_API_KEY = os.getenv("HEDRA_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 

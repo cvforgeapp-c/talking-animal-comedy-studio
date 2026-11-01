@@ -5,11 +5,12 @@ import psycopg2
 
 app = Flask(__name__)
 
-# Load environment variables
+# Load environment variables securely
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-ELEVENLABS_API_KEY = os.getenv("sk_25b4c225c9483dcf9830addf98704b082080bbda20df1c60", "")
-HEDRA_API_KEY = os.getenv("k_live_8XJNojuFksOk4Bhh:sk_WtuS1nqKz_21tdod7CTRnqUdPoYBSstcBm0Cn4YKUsg", "")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+HEDRA_API_KEY = os.getenv("HEDRA_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+
 
 def get_db_connection():
     """Helper to connect to Neon PostgreSQL database."""

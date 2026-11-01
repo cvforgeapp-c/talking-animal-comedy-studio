@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Video GPT • AI Comedy Studio</title>
+    <title>Animale Studio • AI Comedy Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -17,7 +17,7 @@
 
     <!-- Top Header Bar -->
     <header class="px-5 py-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur-lg z-50 border-b border-white/5">
-        <h1 class="text-xl font-extrabold tracking-tight text-white">Video GPT</h1>
+        <h1 class="text-xl font-extrabold tracking-tight text-white">Animale Studio</h1>
         <div class="flex items-center gap-2">
             <button class="badge-pro text-slate-950 font-black text-xs px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg shadow-amber-500/20">
                 <span>👑</span> PRO
@@ -39,19 +39,19 @@
         </div>
 
         <!-- Prompt Card Section -->
-        <div class="glass-box glow-prompt rounded-2xl p-4 space-y-3 relative">
+        <div id="form-card" class="glass-box glow-prompt rounded-2xl p-4 space-y-3 relative">
             <div class="text-xs text-zinc-400 font-medium">Prompt:</div>
             
             <textarea id="prompt-input" rows="4" maxlength="1000" oninput="updateCharCount()" 
                 class="w-full bg-transparent text-sm text-white placeholder-zinc-500 focus:outline-none resize-none"
-                placeholder="A futuristic army with glowing exoskeleton suits advancing through a misty battlefield, their movements synchronized like a wave."></textarea>
+                placeholder="A comedy sketch between a sarcastic goat and a wise monkey discussing why alarm clocks eat grass."></textarea>
 
             <div class="flex items-center justify-between pt-1">
                 <button onclick="surpriseMe()" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition border border-white/5">
                     <span>💡</span> Surprise me
                 </button>
                 <div class="text-[11px] text-zinc-500 font-mono">
-                    <span id="char-count">129</span>/1000 
+                    <span id="char-count">97</span>/1000 
                     <button onclick="clearPrompt()" class="ml-2 text-zinc-400 hover:text-white font-bold">✕</button>
                 </div>
             </div>
@@ -94,15 +94,16 @@
         </button>
 
         <!-- Generation Progress Overlay -->
-        <div id="status-card" class="hidden glass-box rounded-2xl p-4 text-center space-y-3">
-            <div class="inline-block animate-spin rounded-full h-7 w-7 border-3 border-amber-400 border-t-transparent"></div>
-            <p id="status-text" class="text-xs font-bold text-amber-400">Processing video parameters...</p>
+        <div id="status-card" class="hidden glass-box rounded-2xl p-6 text-center space-y-3">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-3 border-amber-400 border-t-transparent mx-auto"></div>
+            <p id="status-text" class="text-xs font-bold text-amber-400">Synthesizing AI voice & animation pipeline...</p>
         </div>
 
         <!-- Result Container -->
-        <div id="result-card" class="hidden glass-box rounded-2xl p-4 space-y-3">
+        <div id="video-container" class="hidden glass-box rounded-2xl p-4 space-y-4">
+            <h3 class="text-emerald-400 font-bold text-sm">Video Ready! 🎉</h3>
             <video id="result-video" controls class="w-full rounded-xl border border-white/10 aspect-video object-cover"></video>
-            <button onclick="resetResult()" class="w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-xs font-bold text-zinc-300">
+            <button onclick="resetForm()" class="w-full bg-zinc-800 hover:bg-zinc-700 py-3 rounded-xl text-xs font-bold text-zinc-300 transition">
                 Create Another Video
             </button>
         </div>
@@ -159,10 +160,11 @@
     </nav>
 
     <script>
+        let pollInterval = null;
         const surprisePrompts = [
-            "A futuristic army with glowing exoskeleton suits advancing through a misty battlefield, their movements synchronized like a wave.",
             "A comedy sketch between a sarcastic goat and a wise monkey discussing why alarm clocks eat grass.",
-            "An animated pet detective solving the mystery of the missing catnip in a dark cyber town."
+            "An epic battle between a cybernetic tiger and a rogue penguin DJ in Neon City.",
+            "Two jungle pandas debating the physics of rolling down muddy hills."
         ];
 
         function updateCharCount() {
@@ -204,41 +206,63 @@
         }
 
         async function startGeneration() {
-            const prompt = document.getElementById('prompt-input').value;
-            if(!prompt.trim()) {
+            const promptText = document.getElementById('prompt-input').value;
+            if(!promptText.trim()) {
                 alert("Please enter a prompt first!");
                 return;
             }
 
+            document.getElementById('form-card').classList.add('hidden');
             document.getElementById('status-card').classList.remove('hidden');
-            document.getElementById('result-card').classList.add('hidden');
             document.getElementById('btn-text').innerText = "Generating...";
 
             try {
-                const res = await fetch('/api/generate', {
+                const response = await fetch('/api/generate', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt: prompt })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: promptText })
                 });
-                const data = await res.json();
+                const data = await response.json();
 
                 if (data.success) {
-                    setTimeout(() => {
-                        document.getElementById('status-card').classList.add('hidden');
-                        document.getElementById('result-card').classList.remove('hidden');
-                        document.getElementById('result-video').src = "https://www.w3schools.com/html/mov_bbb.mp4";
-                        document.getElementById('btn-text').innerText = "Generate";
-                    }, 3500);
+                    pollInterval = setInterval(() => checkJobStatus(data.job_id), 3000);
+                } else {
+                    alert("Error: " + data.error);
+                    resetForm();
                 }
-            } catch(e) {
-                alert("Network error: " + e.message);
-                document.getElementById('status-card').classList.add('hidden');
-                document.getElementById('btn-text').innerText = "Generate";
+            } catch (err) {
+                alert("Network error: " + err.message);
+                resetForm();
             }
         }
 
-    function resetResult() {
-            document.getElementById('result-card').classList.add('hidden');
+        async function checkJobStatus(jobId) {
+            try {
+                const res = await fetch(`/api/job-status?job_id=${jobId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        document.getElementById('status-card').classList.add('hidden');
+                        document.getElementById('video-container').classList.remove('hidden');
+                        if (data.video_url) {
+                            document.getElementById('result-video').src = data.video_url;
+                        }
+                        document.getElementById('btn-text').innerText = "Generate";
+                    }
+                }
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }
+
+        function resetForm() {
+            clearInterval(pollInterval);
+            document.getElementById('video-container').classList.add('hidden');
+            document.getElementById('status-card').classList.add('hidden');
+            document.getElementById('form-card').classList.remove('hidden');
+            document.getElementById('btn-text').innerText = "Generate";
         }
     </script>
 </body>

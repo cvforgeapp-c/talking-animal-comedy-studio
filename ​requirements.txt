@@ -3,3 +3,5 @@ elevenlabs
 requests
 python-dotenv
 flask
+psycopg2-binary
+boto3

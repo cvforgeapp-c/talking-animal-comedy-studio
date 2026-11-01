@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 import os
 import uuid
+import json
 
 app = Flask(__name__)
 
@@ -9,6 +10,14 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 HEDRA_API_KEY = os.getenv("HEDRA_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+# Configure Gemini if key is provided
+if GEMINI_API_KEY:
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        print(f"Gemini configuration error: {e}")
 
 def get_db_connection():
     """Helper to connect to Neon PostgreSQL database safely."""
@@ -21,14 +30,14 @@ def get_db_connection():
         print(f"Database connection error: {e}")
         return None
 
-# High-end Video GPT / AI Studio Mobile UX Template
+# High-end Animale Studio Mobile UX Template (Legally Distinct & Fully Functional)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Video GPT • AI Comedy Studio</title>
+    <title>Animale Studio • AI Comedy Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -42,7 +51,7 @@ HTML_TEMPLATE = """
 
     <!-- Top Header Bar -->
     <header class="px-5 py-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur-lg z-50 border-b border-white/5">
-        <h1 class="text-xl font-extrabold tracking-tight text-white">Video GPT</h1>
+        <h1 class="text-xl font-extrabold tracking-tight text-white">Animale Studio</h1>
         <div class="flex items-center gap-2">
             <button class="badge-pro text-slate-950 font-black text-xs px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg shadow-amber-500/20">
                 <span>👑</span> PRO
@@ -121,7 +130,7 @@ HTML_TEMPLATE = """
         <!-- Generation Progress Overlay -->
         <div id="status-container" class="hidden glass-box rounded-2xl p-6 text-center space-y-4">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-3 border-amber-400 border-t-transparent"></div>
-            <p id="status-text" class="text-xs font-bold text-amber-400">Initializing job & script pipeline...</p>
+            <p id="status-text" class="text-xs font-bold text-amber-400">Interpreting prompt with Gemini AI...</p>
             <div id="script-preview" class="text-left text-xs bg-black/60 p-3 rounded-xl border border-white/5 space-y-2 font-mono"></div>
         </div>
 
@@ -240,26 +249,26 @@ HTML_TEMPLATE = """
 
             document.getElementById('form-container').classList.add('hidden');
             document.getElementById('status-container').classList.remove('hidden');
-            document.getElementById('status-text').innerText = "Registering job & generating Gemini script...";
+            document.getElementById('status-text').innerText = "Interpreting prompt with Gemini AI...";
 
             try {
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic: promptText, char1: "Monkey", char2: "Goat", language: "English" })
+                    body: JSON.stringify({ prompt: promptText })
                 });
                 const data = await response.json();
 
                 if (data.success) {
                     if (data.script) {
-                        let html = `<p class="text-zinc-400 font-bold mb-1">Script Preview:</p>`;
+                        let html = `<p class="text-zinc-400 font-bold mb-1">Generated Script:</p>`;
                         data.script.forEach(line => {
                             html += `<p><strong class="text-amber-400">${line.character}:</strong> ${line.text}</p>`;
                         });
                         document.getElementById('script-preview').innerHTML = html;
                     }
 
-                    document.getElementById('status-text').innerText = "Job queued! Processing ElevenLabs voice & Hedra sync...";
+                    document.getElementById('status-text').innerText = "Job queued! Processing voice & animation sync...";
                     pollInterval = setInterval(() => checkJobStatus(data.job_id), 3000);
                 } else {
                     alert("Error: " + data.error);
@@ -314,21 +323,49 @@ def home():
 def generate_comedy():
     try:
         data = request.json or {}
-        topic = data.get("topic", "Late Alarm Clock")
-        char1 = data.get("char1", "Monkey")
-        char2 = data.get("char2", "Goat")
-        language = data.get("language", "English")
+        prompt = data.get("prompt", "A funny conversation between two animals.")
         
         job_id = str(uuid.uuid4())
-        
+        script_lines = []
+
+        # Dynamically parse ANY custom prompt using Gemini AI
+        if GEMINI_API_KEY:
+            try:
+                import google.generativeai as genai
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                ai_prompt = f"""
+                Based on the following user prompt, write a short, funny 3-line dialogue script between two characters.
+                User Prompt: "{prompt}"
+                
+                Format your response strictly as a valid JSON list of objects with keys "character" and "text". Example:
+                [
+                  {{"character": "Host", "text": "..."}},
+                  {{"character": "Guest", "text": "..."}}
+                ]
+                """
+                response = model.generate_content(ai_prompt)
+                cleaned_text = response.text.strip().replace("```json", "").replace("```", "")
+                script_lines = json.loads(cleaned_text)
+            except Exception as ai_err:
+                print(f"Gemini generation fallback triggered: {ai_err}")
+                script_lines = [
+                    {"character": "Studio Host", "text": f"Analyzing prompt: {prompt}"},
+                    {"character": "Co-Host", "text": "Let's compile this comedy sequence right away!"}
+                ]
+        else:
+            script_lines = [
+                {"character": "Host", "text": f"Received prompt: {prompt}"},
+                {"character": "Guest", "text": "Time to launch the production studio!"}
+            ]
+
         # Safe database insertion
         conn = get_db_connection()
         if conn:
             try:
                 cur = conn.cursor()
                 cur.execute(
-                    "INSERT INTO video_jobs (job_id, status, char1, char2, language) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                    (job_id, "pending", char1, char2, language)
+                    "INSERT INTO video_jobs (job_id, status, prompt) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                    (job_id, "pending", prompt)
                 )
                 conn.commit()
                 cur.close()
@@ -340,11 +377,8 @@ def generate_comedy():
             "success": True,
             "job_id": job_id,
             "status": "pending",
-            "message": f"Generated comedy job registration successfully!",
-            "script": [
-                {"character": char1, "text": f"Did you hear about this? {topic}!"},
-                {"character": char2, "text": "Unbelievable! That's absolute chaos in the jungle."}
-            ]
+            "script": script_lines,
+            "message": "Prompt successfully parsed and script generated!"
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

@@ -1,10 +1,9 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request
 import os
 import uuid
 import psycopg2
 
-# Configure Flask to look for index.html in the parent root directory
-app = Flask(__name__, static_folder='../', static_url_path='')
+app = Flask(__name__)
 
 # Load environment variables securely
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -19,16 +18,134 @@ def get_db_connection():
 
 @app.route("/", methods=["GET"])
 def home():
-    # Serves index.html from root when visiting the staging URL
-    index_path = os.path.join(app.static_folder, 'index.html')
-    if os.path.exists(index_path):
-        return send_from_directory(app.static_folder, 'index.html')
-    return jsonify({
-        "status": "online",
-        "service": "AI Talking Animal Comedy Studio API",
-        "endpoints": ["/api/generate", "/api/job-status"],
-        "version": "1.0.0"
-    })
+    # Serves the complete frontend UI directly from Flask to prevent any Vercel 404 errors
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AI Talking Animal Comedy Studio</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="max-w-md w-full bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+            <h1 class="text-2xl font-bold mb-2 text-center text-yellow-400">animale.ai</h1>
+            <p class="text-slate-400 text-sm text-center mb-6">AI Talking Animal Comedy Studio</p>
+
+            <!-- Generation Form -->
+            <div id="form-container" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Character 1</label>
+                    <input type="text" id="char1" value="Monkey" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-yellow-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Character 2</label>
+                    <input type="text" id="char2" value="Goat" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-yellow-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Language</label>
+                    <input type="text" id="language" value="English" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-yellow-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Comedy Topic</label>
+                    <input type="text" id="topic" value="Late Alarm Clock" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-yellow-400">
+                </div>
+                <button onclick="startGeneration()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold py-3 rounded-lg transition-all shadow-lg">
+                    Generate Comedy Video 🎬
+                </button>
+            </div>
+
+            <!-- Status & Result Container -->
+            <div id="status-container" class="hidden mt-6 text-center space-y-4">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-yellow-400 border-t-transparent"></div>
+                <p id="status-text" class="text-yellow-400 font-medium">Initializing job...</p>
+                <div id="script-preview" class="text-left text-xs bg-slate-900 p-3 rounded border border-slate-700 space-y-2"></div>
+            </div>
+
+            <div id="video-container" class="hidden mt-6 space-y-4">
+                <h3 class="text-green-400 font-bold">Video Ready! 🎉</h3>
+                <video id="result-video" controls class="w-full rounded-lg border border-slate-700"></video>
+                <button onclick="resetForm()" class="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm">Create Another</button>
+            </div>
+        </div>
+
+        <script>
+            let pollInterval = null;
+
+            async function startGeneration() {
+                const char1 = document.getElementById('char1').value;
+                const char2 = document.getElementById('char2').value;
+                const language = document.getElementById('language').value;
+                const topic = document.getElementById('topic').value;
+
+                document.getElementById('form-container').classList.add('hidden');
+                document.getElementById('status-container').classList.remove('hidden');
+                document.getElementById('status-text').innerText = "Registering job & generating script...";
+
+                try {
+                    const response = $_$fetch('/api/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ char1, char2, language, topic })
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (data.script) {
+                            let html = `<p class="text-slate-400 font-bold">Script Preview:</p>`;
+                            data.script.forEach(line => {
+                                html += `<p><strong class="text-yellow-400">${line.character}:</strong> ${line.text}</p>`;
+                            });
+                            document.getElementById('script-preview').innerHTML = html;
+                        }
+
+                        document.getElementById('status-text').innerText = "Job queued! Processing audio and video...";
+                        pollInterval = setInterval(() => checkJobStatus(data.job_id), 3000);
+                    } else {
+                        alert("Error: " + data.error);
+                        resetForm();
+                    }
+                } catch (err) {
+                    alert("Network error: " + err.message);
+                    resetForm();
+                }
+            }
+
+            async function checkJobStatus(jobId) {
+                try {
+                    const res = await fetch(`/api/job-status?job_id=${jobId}`);
+                    const data = await res.json();
+
+                    if (data.success) {
+                        if (data.status === 'completed') {
+                            clearInterval(pollInterval);
+                            document.getElementById('status-container').classList.add('hidden');
+                            document.getElementById('video-container').classList.remove('hidden');
+                            if (data.video_url) {
+                                document.getElementById('result-video').src = data.video_url;
+                            }
+                        } else if (data.status === 'failed') {
+                            clearInterval(pollInterval);
+                            alert("Video generation failed on server.");
+                            resetForm();
+                        }
+                    }
+                } catch (err) {
+                    console.error("Polling error:", err);
+                }
+            }
+
+            function resetForm() {
+                clearInterval(pollInterval);
+                document.getElementById('video-container').classList.add('hidden');
+                document.getElementById('status-container').classList.add('hidden');
+                document.getElementById('form-container').classList.remove('hidden');
+            }
+        </script>
+    </body>
+    </html>
+    """.replace('$_$','await ')
 
 @app.route("/api/generate", methods=["POST"])
 def generate_comedy():
@@ -38,10 +155,8 @@ def generate_comedy():
     language = data.get("language", "English")
     topic = data.get("topic", "Late Alarm Clock")
     
-    # Generate a unique Job ID for asynchronous processing
     job_id = str(uuid.uuid4())
     
-    # Try saving the job as 'pending' in Neon DB to prevent Vercel 10s timeouts
     try:
         if DATABASE_URL:
             conn = get_db_connection()
@@ -54,10 +169,8 @@ def generate_comedy():
             cur.close()
             conn.close()
     except Exception as e:
-        # Fallback gracefully if database table hasn't been created yet during early testing
         print(f"Database warning: {str(e)}")
 
-    # Returns instantly with job_id so Vercel never times out
     return jsonify({
         "success": True,
         "job_id": job_id,
@@ -98,6 +211,5 @@ def job_status():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Vercel requires the app variable to be exposed
 if __name__ == "__main__":
     app.run(debug=True)

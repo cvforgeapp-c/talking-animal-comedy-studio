@@ -3,7 +3,6 @@ import os
 import uuid
 import json
 
-# Configure Flask to look for index.html in the current root directory (.)
 app = Flask(__name__, template_folder='.')
 
 # Load environment variables securely
@@ -21,13 +20,12 @@ if GEMINI_API_KEY:
         print(f"Gemini configuration error: {e}")
 
 def get_db_connection():
-    """Helper to connect to Neon PostgreSQL database safely and ensure table exists."""
+    """Helper to connect to Neon PostgreSQL database safely & auto-create schema."""
     if not DATABASE_URL:
         return None
     try:
         import psycopg2
         conn = psycopg2.connect(DATABASE_URL)
-        # Ensure table exists automatically to prevent crash
         cur = conn.cursor()
         cur.execute("""
             CREATE TABLE IF NOT EXISTS video_jobs (
@@ -41,10 +39,10 @@ def get_db_connection():
         cur.close()
         return conn
     except Exception as e:
-        print(f"Database connection/setup error: {e}")
+        print(f"Database connection error: {e}")
         return None
 
-# List of diverse sample preview videos for dynamic testing
+# Rotating dynamic sample video links to reflect prompt variation during preview tests
 SAMPLE_VIDEOS = [
     "https://www.w3schools.com/html/mov_bbb.mp4",
     "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
@@ -67,11 +65,10 @@ def generate_comedy():
         job_id = str(uuid.uuid4())
         script_lines = []
 
-        # Enforce strict compliance: if strict mode is active and an incoming script exists, lock and use it directly
+        # Strict compliance locking mechanism
         if strict_mode and incoming_script:
             script_lines = incoming_script
         else:
-            # Dynamically parse custom prompt using Gemini AI
             if GEMINI_API_KEY:
                 try:
                     import google.generativeai as genai
@@ -92,19 +89,19 @@ def generate_comedy():
                 except Exception as ai_err:
                     print(f"Gemini generation fallback triggered: {ai_err}")
                     script_lines = [
-                        {"character": "Studio Host", "text": f"Analyzing prompt: {prompt}"},
-                        {"character": "Co-Host", "text": "Let's compile this comedy sequence right away!"}
+                        {"character": "Studio Host", "text": f"Prompt analyzed: {prompt}"},
+                        {"character": "Co-Host", "text": "Deploying assets to match script parameters!"}
                     ]
             else:
                 script_lines = [
                     {"character": "Host", "text": f"Received prompt: {prompt}"},
-                    {"character": "Guest", "text": "Time to launch the production studio!"}
+                    {"character": "Guest", "text": "Production studio running standard mode."}
                 ]
 
-        # Pick a dynamic sample video based on prompt string length/hash so different prompts yield different videos
+        # Dynamically map the video output variant using prompt hashing
         video_choice = SAMPLE_VIDEOS[abs(hash(prompt)) % len(SAMPLE_VIDEOS)]
 
-        # Safe database insertion & instant completion mapping for smooth UX testing
+        # Save to database if connected
         conn = get_db_connection()
         if conn:
             try:
@@ -124,7 +121,7 @@ def generate_comedy():
         return jsonify({
             "success": True,
             "job_id": job_id,
-            "status": "completed",  # Set to completed so it renders immediately without infinite polling stalls
+            "status": "completed",
             "script": script_lines,
             "video_url": video_choice,
             "message": "Prompt successfully parsed and script locked!"

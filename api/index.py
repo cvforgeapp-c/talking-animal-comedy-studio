@@ -1,9 +1,10 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 import os
 import uuid
 import psycopg2
 
-app = Flask(__name__)
+# Configure Flask to look for index.html in the parent root directory
+app = Flask(__name__, static_folder='../', static_url_path='')
 
 # Load environment variables securely
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -18,6 +19,10 @@ def get_db_connection():
 
 @app.route("/", methods=["GET"])
 def home():
+    # Serves index.html from root when visiting the staging URL
+    index_path = os.path.join(app.static_folder, 'index.html')
+    if os.path.exists(index_path):
+        return send_from_directory(app.static_folder, 'index.html')
     return jsonify({
         "status": "online",
         "service": "AI Talking Animal Comedy Studio API",

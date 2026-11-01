@@ -1,0 +1,5 @@
+google-generativeai
+elevenlabs
+requests
+python-dotenv
+flask

@@ -7,8 +7,7 @@ app = Flask(__name__, template_folder='.')
 
 # Load environment variables securely
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
-HEDRA_API_KEY = os.getenv("HEDRA_API_KEY", "")
+LUMA_API_KEY = os.getenv("LUMA_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # Configure Gemini if key is provided
@@ -18,6 +17,15 @@ if GEMINI_API_KEY:
         genai.configure(api_key=GEMINI_API_KEY)
     except Exception as e:
         print(f"Gemini configuration error: {e}")
+
+# Configure Luma AI client if key is provided
+luma_client = None
+if LUMA_API_KEY:
+    try:
+        from lumaai import LumaAI
+        luma_client = LumaAI(auth_token=LUMA_API_KEY)
+    except Exception as e:
+        print(f"Luma AI SDK initialization error: {e}")
 
 def get_db_connection():
     """Helper to connect to Neon PostgreSQL database safely & auto-create schema."""
@@ -32,6 +40,7 @@ def get_db_connection():
                 job_id VARCHAR(255) PRIMARY KEY,
                 status VARCHAR(50),
                 prompt TEXT,
+                external_task_id TEXT,
                 video_url TEXT
             );
         """)
@@ -42,7 +51,7 @@ def get_db_connection():
         print(f"Database connection error: {e}")
         return None
 
-# Rotating dynamic sample video links to reflect prompt variation during preview tests
+# Rotating dynamic sample video fallback links when Luma key isn't provided
 SAMPLE_VIDEOS = [
     "https://www.w3schools.com/html/mov_bbb.mp4",
     "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
@@ -64,8 +73,9 @@ def generate_comedy():
         
         job_id = str(uuid.uuid4())
         script_lines = []
+        external_task_id = None
 
-        # Strict compliance locking mechanism
+        # Strict compliance locking mechanism for script generation
         if strict_mode and incoming_script:
             script_lines = incoming_script
         else:
@@ -98,8 +108,26 @@ def generate_comedy():
                     {"character": "Guest", "text": "Production studio running standard mode."}
                 ]
 
-        # Dynamically map the video output variant using prompt hashing
-        video_choice = SAMPLE_VIDEOS[abs(hash(prompt)) % len(SAMPLE_VIDEOS)]
+        # Trigger real Luma AI generation if configured, otherwise use dynamic sample fallback
+        initial_status = "processing"
+        video_url = None
+
+        if luma_client:
+            try:
+                generation = luma_client.create(
+                    prompt=prompt,
+                    model="ray-2",
+                    resolution="720p",
+                    duration="5s"
+                )
+                external_task_id = generation.id
+            except Exception as luma_err:
+                print(f"Luma API trigger error: {luma_err}")
+                initial_status = "completed"
+                video_url = SAMPLE_VIDEOS[abs(hash(prompt)) % len(SAMPLE_VIDEOS)]
+        else:
+            initial_status = "completed"
+            video_url = SAMPLE_VIDEOS[abs(hash(prompt)) % len(SAMPLE_VIDEOS)]
 
         # Save to database if connected
         conn = get_db_connection()
@@ -107,10 +135,10 @@ def generate_comedy():
             try:
                 cur = conn.cursor()
                 cur.execute(
-                    """INSERT INTO video_jobs (job_id, status, prompt, video_url) 
-                       VALUES (%s, %s, %s, %s) 
-                       ON CONFLICT (job_id) DO UPDATE SET status = EXCLUDED.status, video_url = EXCLUDED.video_url""",
-                    (job_id, "completed", prompt, video_choice)
+                    """INSERT INTO video_jobs (job_id, status, prompt, external_task_id, video_url) 
+                       VALUES (%s, %s, %s, %s, %s) 
+                       ON CONFLICT (job_id) DO UPDATE SET status = EXCLUDED.status, external_task_id = EXCLUDED.external_task_id, video_url = EXCLUDED.video_url""",
+                    (job_id, initial_status, prompt, external_task_id, video_url)
                 )
                 conn.commit()
                 cur.close()
@@ -121,10 +149,10 @@ def generate_comedy():
         return jsonify({
             "success": True,
             "job_id": job_id,
-            "status": "completed",
+            "status": initial_status,
             "script": script_lines,
-            "video_url": video_choice,
-            "message": "Prompt successfully parsed and script locked!"
+            "video_url": video_url if video_url else "",
+            "message": "Prompt successfully parsed and video generation queued!"
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -146,19 +174,40 @@ def job_status():
             })
             
         cur = conn.cursor()
-        cur.execute("SELECT status, video_url FROM video_jobs WHERE job_id = %s", (job_id,))
+        cur.execute("SELECT status, external_task_id, video_url FROM video_jobs WHERE job_id = %s", (job_id,))
         row = cur.fetchone()
-        cur.close()
-        conn.close()
         
         if not row:
+            cur.close()
+            conn.close()
             return jsonify({"success": False, "error": "Job not found"}), 404
+            
+        status, external_task_id, video_url = row[0], row[1], row[2]
+
+        # Poll live Luma status if task is processing
+        if luma_client and external_task_id and status == "processing":
+            try:
+                gen_status = luma_client.get(id=external_task_id)
+                if gen_status.state == "completed":
+                    status = "completed"
+                    video_url = gen_status.assets.video if gen_status.assets and gen_status.assets.video else ""
+                    cur.execute("UPDATE video_jobs SET status = %s, video_url = %s WHERE job_id = %s", ("completed", video_url, job_id))
+                    conn.commit()
+                elif gen_status.state == "failed":
+                    status = "failed"
+                    cur.execute("UPDATE video_jobs SET status = %s WHERE job_id = %s", ("failed", job_id))
+                    conn.commit()
+            except Exception as poll_err:
+                print(f"Error checking external Luma task status: {poll_err}")
+
+        cur.close()
+        conn.close()
             
         return jsonify({
             "success": True,
             "job_id": job_id,
-            "status": row[0],
-            "video_url": row[1] if row[1] else SAMPLE_VIDEOS[0]
+            "status": status,
+            "video_url": video_url if video_url else ""
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

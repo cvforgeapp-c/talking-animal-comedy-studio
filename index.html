@@ -93,10 +93,11 @@
             <span>✨</span> <span id="btn-text">Generate</span>
         </button>
 
-        <!-- Generation Progress Overlay -->
+        <!-- Generation Progress Overlay (Incorporated New Layout) -->
         <div id="status-card" class="hidden glass-box rounded-2xl p-6 text-center space-y-3">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-3 border-amber-400 border-t-transparent mx-auto"></div>
-            <p id="status-text" class="text-xs font-bold text-amber-400">Synthesizing AI voice & animation pipeline...</p>
+            <p id="status-text" class="text-xs font-bold text-amber-400">Interpreting prompt with Gemini AI...</p>
+            <div id="script-preview" class="text-left text-xs bg-black/60 p-3 rounded-xl border border-white/5 space-y-1 font-mono mt-2"></div>
         </div>
 
         <!-- Result Container -->
@@ -205,6 +206,7 @@
             event.currentTarget.classList.add('border-amber-500', 'text-amber-400');
         }
 
+        /* Updated Generation Handler Function */
         async function startGeneration() {
             const promptText = document.getElementById('prompt-input').value;
             if(!promptText.trim()) {
@@ -225,6 +227,15 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    if (data.script) {
+                        let html = `<p class="text-zinc-400 font-bold mb-1">Generated Script:</p>`;
+                        data.script.forEach(line => {
+                            html += `<p><strong class="text-amber-400">${line.character}:</strong> ${line.text}</p>`;
+                        });
+                        document.getElementById('script-preview').innerHTML = html;
+                    }
+
+                    document.getElementById('status-text').innerText = "Synthesizing voice & rendering video...";
                     pollInterval = setInterval(() => checkJobStatus(data.job_id), 3000);
                 } else {
                     alert("Error: " + data.error);
@@ -262,6 +273,8 @@
             document.getElementById('video-container').classList.add('hidden');
             document.getElementById('status-card').classList.add('hidden');
             document.getElementById('form-card').classList.remove('hidden');
+            document.getElementById('script-preview').innerHTML = '';
+            document.getElementById('status-text').innerText = "Interpreting prompt with Gemini AI...";
             document.getElementById('btn-text').innerText = "Generate";
         }
     </script>

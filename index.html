@@ -249,7 +249,11 @@
                         setTimeout(() => {
                             document.getElementById('status-container').classList.add('hidden');
                             document.getElementById('video-container').classList.remove('hidden');
-                            document.getElementById('result-video').src = data.video_url;
+                            
+                            const videoElem = document.getElementById('result-video');
+                            videoElem.src = data.video_url || "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+                            videoElem.load();
+                            videoElem.play().catch(e => console.log("Auto-play prevented by browser:", e));
                         }, 1500);
                     } else {
                         document.getElementById('status-container').classList.add('hidden');
@@ -273,7 +277,11 @@
                 if (data.status === 'completed' && data.video_url) {
                     document.getElementById('status-container').classList.add('hidden');
                     document.getElementById('video-container').classList.remove('hidden');
-                    document.getElementById('result-video').src = data.video_url;
+                    
+                    const videoElem = document.getElementById('result-video');
+                    videoElem.src = data.video_url;
+                    videoElem.load();
+                    videoElem.play().catch(e => console.log("Auto-play prevented by browser:", e));
                 } else if (data.status === 'processing') {
                     setTimeout(() => checkKlingStatus(requestId), 2500); // Poll every 2.5s
                 } else {

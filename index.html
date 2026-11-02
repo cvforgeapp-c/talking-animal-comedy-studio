@@ -241,15 +241,20 @@
                         document.getElementById('script-preview').innerHTML = html;
                     }
 
-                    document.getElementById('status-text').innerText = "Synthesizing voice & rendering animation frames...";
-                    
-                    setTimeout(() => {
+                    if (data.request_id) {
+                        document.getElementById('status-text').innerText = "Rendering video via Kling AI queue...";
+                        checkKlingStatus(data.request_id);
+                    } else if (data.video_url) {
+                        document.getElementById('status-text').innerText = "Video compiled successfully!";
+                        setTimeout(() => {
+                            document.getElementById('status-container').classList.add('hidden');
+                            document.getElementById('video-container').classList.remove('hidden');
+                            document.getElementById('result-video').src = data.video_url;
+                        }, 1500);
+                    } else {
                         document.getElementById('status-container').classList.add('hidden');
                         document.getElementById('video-container').classList.remove('hidden');
-                        if (data.video_url) {
-                            document.getElementById('result-video').src = data.video_url;
-                        }
-                    }, 2500);
+                    }
                 } else {
                     alert("Error: " + data.error);
                     resetForm();
@@ -257,6 +262,27 @@
             } catch (err) {
                 alert("Network error: " + err.message);
                 resetForm();
+            }
+        }
+
+        async function checkKlingStatus(requestId) {
+            try {
+                const res = await fetch(`/api/job-status?request_id=${requestId}`);
+                const data = await res.json();
+                
+                if (data.status === 'completed' && data.video_url) {
+                    document.getElementById('status-container').classList.add('hidden');
+                    document.getElementById('video-container').classList.remove('hidden');
+                    document.getElementById('result-video').src = data.video_url;
+                } else if (data.status === 'processing') {
+                    setTimeout(() => checkKlingStatus(requestId), 2500); // Poll every 2.5s
+                } else {
+                    alert("Generation encountered an error. Loading fallback preview.");
+                    resetForm();
+                }
+            } catch (pollErr) {
+                console.error("Polling error:", pollErr);
+                setTimeout(() => checkKlingStatus(requestId), 3000);
             }
         }
 

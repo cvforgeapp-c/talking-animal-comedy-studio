@@ -96,18 +96,6 @@
             </div>
         </div>
 
-        <!-- AI Sound Toggle Switch -->
-        <div class="flex items-center justify-between py-1">
-            <div class="flex items-center gap-1.5">
-                <span class="text-xs font-bold text-zinc-300">AI Sound</span>
-                <span class="text-xs">👑</span>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="ai-sound-toggle" checked class="sr-only peer">
-                <div class="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-            </label>
-        </div>
-
         <!-- Main Generation Action Button -->
         <button id="generate-btn" onclick="startGeneration()" class="w-full btn-gradient text-white font-extrabold py-4 rounded-2xl shadow-xl shadow-purple-900/30 active:scale-98 transition flex items-center justify-center gap-2 text-base">
             <span>✨</span> <span id="btn-text">Generate Comedy Video</span>
@@ -129,35 +117,67 @@
             </button>
         </div>
 
-        <!-- Inspirations & Trending Feed -->
+        <!-- Inspirations & Explore Feed (Kling-Style Library) -->
         <div class="space-y-3 pt-2">
-            <h3 class="text-sm font-bold text-white">Inspirations</h3>
-            
-            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <button class="bg-white text-black font-bold px-4 py-1.5 rounded-full whitespace-nowrap">Viral</button>
-                <button class="bg-zinc-900 text-zinc-400 font-bold px-4 py-1.5 rounded-full border border-white/5 whitespace-nowrap">ASMR</button>
-                <button class="bg-zinc-900 text-zinc-400 font-bold px-4 py-1.5 rounded-full border border-white/5 whitespace-nowrap">Commercial</button>
-                <button class="bg-zinc-900 text-zinc-400 font-bold px-4 py-1.5 rounded-full border border-white/5 whitespace-nowrap">Pet</button>
-                <button class="bg-zinc-900 text-zinc-400 font-bold px-4 py-1.5 rounded-full border border-white/5 whitespace-nowrap">Funny</button>
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white">Preset Library</h3>
+                <span class="text-xs text-amber-400 font-medium">Tap to Recreate</span>
             </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div class="relative rounded-2xl overflow-hidden bg-zinc-900 aspect-square border border-white/5 group cursor-pointer">
-                    <img src="https://images.unsplash.com/photo-1540573133985-780688d1728b?w=400&auto=format&fit=crop" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <div class="w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white text-xs pl-0.5">▶</div>
+            
+            <div class="grid grid-cols-2 gap-3" id="explore-grid">
+                <!-- Preset Card 1 -->
+                <div onclick="openPresetModal('A giant angry onion scolds a crying tomato in the yard.', 'Wise Monkey', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4')" 
+                     class="relative rounded-2xl overflow-hidden bg-zinc-900 aspect-[3/4] border border-white/10 group cursor-pointer">
+                    <video src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" muted loop playsinline class="w-full h-full object-cover pointer-events-none"></video>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 p-3 flex flex-col justify-between">
+                        <span class="self-end bg-black/60 backdrop-blur text-[10px] px-2 py-0.5 rounded-full font-bold">🔥 Viral</span>
+                        <div>
+                            <p class="text-xs font-bold text-white line-clamp-2">Village Drama Hits Different</p>
+                            <p class="text-[10px] text-zinc-400 mt-0.5">@DramaStudio</p>
+                        </div>
                     </div>
                 </div>
-                <div class="relative rounded-2xl overflow-hidden bg-zinc-900 aspect-square border border-white/5 group cursor-pointer">
-                    <img src="https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=400&auto=format&fit=crop" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <div class="w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white text-xs pl-0.5">▶</div>
+
+                <!-- Preset Card 2 -->
+                <div onclick="openPresetModal('Two jungle animals discovering a smartphone and trying to record a viral TikTok dance.', 'Cyber Chicken', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4')" 
+                     class="relative rounded-2xl overflow-hidden bg-zinc-900 aspect-[3/4] border border-white/10 group cursor-pointer">
+                    <video src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4" muted loop playsinline class="w-full h-full object-cover pointer-events-none"></video>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/20 p-3 flex flex-col justify-between">
+                        <span class="self-end bg-black/60 backdrop-blur text-[10px] px-2 py-0.5 rounded-full font-bold">✨ New</span>
+                        <div>
+                            <p class="text-xs font-bold text-white line-clamp-2">The Street is Quiet</p>
+                            <p class="text-[10px] text-zinc-400 mt-0.5">@JungleVibes</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
     </main>
+
+    <!-- Preset Recreate Modal Overlay (Kling Style) -->
+    <div id="preset-modal" class="hidden fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between p-5 max-w-md mx-auto">
+        <div class="flex items-center justify-between">
+            <button onclick="closePresetModal()" class="w-8 h-8 rounded-full bg-zinc-800 text-zinc-300 font-bold flex items-center justify-center">✕</button>
+            <span class="text-xs font-bold text-zinc-400">Template Preview</span>
+            <div class="w-8"></div>
+        </div>
+
+        <div class="relative w-full aspect-[9/16] rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 my-auto flex items-center justify-center">
+            <video id="modal-video" controls autoplay loop playsinline class="w-full h-full object-cover"></video>
+            <div class="absolute bottom-4 inset-x-4 glass-box p-3 rounded-xl border border-white/10 space-y-1">
+                <p id="modal-prompt-text" class="text-xs text-white font-medium line-clamp-3"></p>
+                <div class="flex items-center justify-between pt-1">
+                    <span id="modal-author" class="text-[10px] text-amber-400 font-mono"></span>
+                    <span class="text-[10px] text-zinc-500">Kling Preset</span>
+                </div>
+            </div>
+        </div>
+
+        <button id="modal-recreate-btn" onclick="recreateFromModal()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-4 rounded-2xl transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-500/20">
+            <span>✨</span> Recreate with this Prompt
+        </button>
+    </div>
 
     <!-- App Bottom Navigation Bar -->
     <nav class="fixed bottom-0 inset-x-0 bg-black/95 backdrop-blur-md border-t border-white/10 px-6 py-2.5 flex justify-between items-center z-50 max-w-md mx-auto">
@@ -184,6 +204,8 @@
         let pollInterval = null;
         let latestScriptData = null;
         let selectedCharacter = "Sarcastic Goat";
+        let activeModalPrompt = "";
+        let activeModalCharacter = "Sarcastic Goat";
 
         const presetLibrary = {
             "Sarcastic Goat": {
@@ -214,12 +236,33 @@
             element.classList.add('selected');
             selectedCharacter = charName;
         }
-        
-        const surprisePrompts = [
-            "A hilarious conversation between a sarcastic mountain goat and a wise monkey arguing about a late alarm clock.",
-            "Why did the chicken cross the cyber road? An AI animal stand-up comedy sequence.",
-            "Two jungle animals discovering a smartphone and trying to record a viral TikTok dance."
-        ];
+
+        function openPresetModal(promptText, character, videoUrl) {
+            activeModalPrompt = promptText;
+            activeModalCharacter = character;
+            document.getElementById('modal-prompt-text').innerText = promptText;
+            document.getElementById('modal-author').innerText = `@Preset_${character.replace(/\s+/g, '')}`;
+            
+            const modalVideo = document.getElementById('modal-video');
+            modalVideo.src = videoUrl;
+            modalVideo.load();
+            
+            document.getElementById('preset-modal').classList.remove('hidden');
+        }
+
+        function closePresetModal() {
+            const modalVideo = document.getElementById('modal-video');
+            modalVideo.pause();
+            modalVideo.src = "";
+            document.getElementById('preset-modal').classList.add('hidden');
+        }
+
+        function recreateFromModal() {
+            closePresetModal();
+            document.getElementById('prompt-input').value = activeModalPrompt;
+            updateCharCount();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         function updateCharCount() {
             const val = document.getElementById('prompt-input').value;
@@ -232,6 +275,11 @@
         }
 
         function surpriseMe() {
+            const surprisePrompts = [
+                "A hilarious conversation between a sarcastic mountain goat and a wise monkey arguing about a late alarm clock.",
+                "Why did the chicken cross the cyber road? An AI animal stand-up comedy sequence.",
+                "Two jungle animals discovering a smartphone and trying to record a viral TikTok dance."
+            ];
             const idx = Math.floor(Math.random() * surprisePrompts.length);
             document.getElementById('prompt-input').value = surprisePrompts[idx];
             updateCharCount();
@@ -240,7 +288,6 @@
         function switchMode(mode) {
             const btnText = document.getElementById('tab-text');
             const btnImg = document.getElementById('tab-image');
-
             if(mode === 'text') {
                 btnText.className = "flex-1 py-2.5 rounded-full text-xs font-bold bg-white text-black transition-all shadow-md";
                 btnImg.className = "flex-1 py-2.5 rounded-full text-xs font-bold text-zinc-400 hover:text-white transition-all relative";
@@ -271,7 +318,6 @@
             document.getElementById('status-text').innerText = `Directing ${selectedCharacter} with AI script...`;
 
             try {
-                // Try backend API route first if configured
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -285,7 +331,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
-                        renderScriptAndVideo(data.script, data.video_url || presetLibrary[selectedCharacter].video, promptText);
+                        renderScriptAndVideo(data.script, data.video_url || presetLibrary[selectedCharacter].video);
                         return;
                     }
                 }
@@ -293,18 +339,17 @@
                 console.log("Backend offline or unreachable, falling back to local preset simulation engine.");
             }
 
-            // Fallback 100% reliable local preset generation simulation
             setTimeout(() => {
                 const preset = presetLibrary[selectedCharacter] || presetLibrary["Sarcastic Goat"];
                 const simulatedScript = [
                     { character: selectedCharacter, text: promptText },
                     ...preset.dialogue
                 ];
-                renderScriptAndVideo(simulatedScript, preset.video, promptText);
+                renderScriptAndVideo(simulatedScript, preset.video);
             }, 1200);
         }
 
-        function renderScriptAndVideo(scriptLines, videoUrl, promptText) {
+        function renderScriptAndVideo(scriptLines, videoUrl) {
             let html = `<p class="text-zinc-400 font-bold mb-1">Director Script (${selectedCharacter}):</p>`;
             scriptLines.forEach(line => {
                 html += `<p><strong class="text-amber-400">${line.character}:</strong> ${line.text}</p>`;

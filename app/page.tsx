@@ -6,6 +6,7 @@ import { useState } from 'react';
 export default function Home() {
   const [characterPrompt, setCharacterPrompt] = useState('');
   const [motionPrompt, setMotionPrompt] = useState('');
+  const [dialogue, setDialogue] = useState('');
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('idle');
@@ -19,6 +20,7 @@ export default function Home() {
     const formData = new FormData();
     formData.append('motion_prompt', motionPrompt);
     formData.append('character_description', characterPrompt);
+    formData.append('dialogue_script', dialogue);
     if (referenceFile) {
       formData.append('reference_image', referenceFile);
     }
@@ -70,7 +72,7 @@ export default function Home() {
           Talking Animal & Comedy Studio
         </h1>
         <p className="text-slate-400 mb-6 text-sm">
-          Generate or animate consistent 3D cinematic characters locally.
+          Generate or animate consistent 3D cinematic characters locally with voice lines.
         </p>
 
         <form onSubmit={handleGenerate} className="space-y-4">
@@ -108,6 +110,19 @@ export default function Home() {
               value={motionPrompt}
               onChange={(e) => setMotionPrompt(e.target.value)}
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Character Dialogue / Comedy Line (Spoken Audio)
+            </label>
+            <input
+              type="text"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white text-sm outline-none"
+              placeholder="e.g., 'Why did the developer cross the road? To debug the other side!'"
+              value={dialogue}
+              onChange={(e) => setDialogue(e.target.value)}
             />
           </div>
 

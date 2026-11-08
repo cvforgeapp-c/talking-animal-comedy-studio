@@ -6,24 +6,27 @@ import { useState } from 'react';
 export default function Home() {
   const [characterPrompt, setCharacterPrompt] = useState('');
   const [motionPrompt, setMotionPrompt] = useState('');
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('idle');
   const [loading, setLoading] = useState(false);
 
-  // 1. Submit Generation Request to FastAPI Backend
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setStatus('processing');
 
+    const formData = new FormData();
+    formData.append('motion_prompt', motionPrompt);
+    formData.append('character_description', characterPrompt);
+    if (referenceFile) {
+      formData.append('reference_image', referenceFile);
+    }
+
     try {
       const response = await fetch('http://localhost:8000/api/v1/generate-video', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          character_description: characterPrompt,
-          motion_prompt: motionPrompt,
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -41,13 +44,11 @@ export default function Home() {
     }
   };
 
-  // 2. Poll Backend for Job Completion Status
   const pollJobStatus = (id: string) => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`http://localhost:8000/api/v1/status/${id}`);
         const data = await res.json();
-
         setStatus(data.status);
 
         if (data.status === 'completed' || data.status === 'failed') {
@@ -59,41 +60,51 @@ export default function Home() {
         clearInterval(interval);
         setLoading(false);
       }
-    }, 4000); // Check every 4 seconds
+    }, 4000);
   };
 
   return (
     <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6">
       <div className="max-w-xl w-full bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl">
-        
         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-2">
           Talking Animal & Comedy Studio
         </h1>
         <p className="text-slate-400 mb-6 text-sm">
-          Generate cinematic 3D character keyframes and animated video clips locally.
+          Generate or animate consistent 3D cinematic characters locally.
         </p>
 
         <form onSubmit={handleGenerate} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
-              Character Description (Pixar / 3D Style)
+              Upload Character Reference Image (Optional - locks identity)
             </label>
-            <textarea
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 outline-none resize-none h-24 text-sm"
-              placeholder="e.g., A cute crying tomato wearing a traditional Indian saree..."
-              value={characterPrompt}
-              onChange={(e) => setCharacterPrompt(e.target.value)}
-              required
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setReferenceFile(e.target.files?.[0] || null)}
+              className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
-              Motion Prompt (Animation / Expression)
+              Character Prompt (If no image uploaded)
             </label>
             <textarea
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 outline-none resize-none h-24 text-sm"
-              placeholder="e.g., Sobbing emotionally, shoulders shaking, tears rolling down cheeks..."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white text-sm outline-none resize-none h-20"
+              placeholder="e.g., A giant angry onion character..."
+              value={characterPrompt}
+              onChange={(e) => setCharacterPrompt(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Motion / Action Prompt
+            </label>
+            <textarea
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white text-sm outline-none resize-none h-20"
+              placeholder="e.g., Turns aggressively and gestures toward the camera..."
               value={motionPrompt}
               onChange={(e) => setMotionPrompt(e.target.value)}
               required
@@ -106,46 +117,29 @@ export default function Home() {
             className={`w-full py-3 rounded-lg font-bold transition-all ${
               loading
                 ? 'bg-purple-800 cursor-not-allowed opacity-50'
-                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 shadow-lg shadow-purple-900/30'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 shadow-lg'
             }`}
           >
-            {loading ? `Generating Video (${status})...` : 'Generate 3D Video 🎬'}
+            {loading ? `Generating Video (${status})...` : 'Generate Cinematic Video 🎬'}
           </button>
         </form>
 
-        {/* Status / Output Section */}
         {jobId && (
           <div className="mt-6 p-4 bg-slate-950 border border-slate-800 rounded-xl text-center">
             <p className="text-sm text-slate-400 mb-2">
-              Job ID: <span className="text-mono text-purple-400">{jobId}</span>
+              Job ID: <span className="text-purple-400">{jobId}</span>
             </p>
             <p className="text-sm font-semibold capitalize mb-4">
-              Current Status:{' '}
-              <span
-                className={
-                  status === 'completed'
-                    ? 'text-green-400'
-                    : status === 'failed'
-                    ? 'text-red-400'
-                    : 'text-yellow-400 animate-pulse'
-                }
-              >
+              Status:{' '}
+              <span className={status === 'completed' ? 'text-green-400' : status === 'failed' ? 'text-red-400' : 'text-yellow-400 animate-pulse'}>
                 {status}
               </span>
             </p>
 
             {status === 'completed' && (
               <div className="space-y-4">
-                <video
-                  controls
-                  className="w-full rounded-lg border border-slate-800"
-                  src={`http://localhost:8000/api/v1/download/${jobId}`}
-                />
-                <a
-                  href={`http://localhost:8000/api/v1/download/${jobId}`}
-                  download
-                  className="inline-block bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition-all"
-                >
+                <video controls className="w-full rounded-lg border border-slate-800" src={`http://localhost:8000/api/v1/download/${jobId}`} />
+                <a href={`http://localhost:8000/api/v1/download/${jobId}`} download className="inline-block bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-lg text-sm">
                   Download MP4 📥
                 </a>
               </div>

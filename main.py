@@ -27,6 +27,7 @@ async def create_video_job(
     background_tasks: BackgroundTasks,
     motion_prompt: str = Form(...),
     character_description: str = Form(default=""),
+    dialogue_script: str = Form(default=""),
     reference_image: UploadFile = File(default=None)
 ):
     job_id = str(uuid.uuid4())
@@ -43,6 +44,7 @@ async def create_video_job(
             output_path = generate_3d_character_video(
                 character_prompt=character_description,
                 motion_prompt=motion_prompt,
+                dialogue_script=dialogue_script,
                 reference_image_path=image_path,
                 job_id=job_id
             )
@@ -55,7 +57,7 @@ async def create_video_job(
     return {
         "job_id": job_id,
         "status": "processing",
-        "message": "Image-to-Video job started with character reference."
+        "message": "Talking video generation job started with dialogue and character reference."
     }
 
 @app.get("/api/v1/status/{job_id}")
